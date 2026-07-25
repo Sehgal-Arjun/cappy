@@ -1,36 +1,62 @@
 import AppKit
+import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
+    private let popover = NSPopover()
     private let caffeinator = Caffeinator()
-    private var tick: Timer?
+    private let settings = Settings()
+
+    private var animationTimer: Timer?
+    private var shownFrame: CatAnimation.Frame?
+    private var shownTitle = ""
+    private var menuBarImages: [CatAnimation.Pose: [NSImage]] = [:]
+
+    private static let iconHeight: CGFloat = 20
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-
-        // Temporary plain menu until the real dropdown lands.
-        let menu = NSMenu()
-        menu.addItem(withTitle: "Keep awake for 1 minute", action: #selector(startOneMinute), keyEquivalent: "")
-        menu.addItem(withTitle: "Keep awake until stopped", action: #selector(startForever), keyEquivalent: "")
-        menu.addItem(withTitle: "Stop", action: #selector(stop), keyEquivalent: "")
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit Cappy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        for item in menu.items where item.action != #selector(NSApplication.terminate(_:)) {
-            item.target = self
+        if let button = statusItem.button {
+            button.imagePosition = .imageLeft
+            button.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
+            button.target = self
+            button.action = #selector(togglePopover(_:))
+            button.setAccessibilityLabel("Cappy")
         }
-        statusItem.menu = menu
 
-        tick = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refreshTitle() }
+        for pose in [CatAnimation.Pose.idle, .groom, .sleep] {
+            menuBarImages[pose] = CatAnimation.strip(for: pose).frames.map {
+                $0.pixelImage(pointHeight: Self.iconHeight)
+            }
         }
-        refreshTitle()
+
+        let hosting = NSHostingController(rootView: MenuView(
+            caffeinator: caffeinator,
+            settings: settings,
+            quit: { NSApp.terminate(nil) }
+        ))
+        hosting.sizingOptions = .preferredContentSize
+        popover.contentViewController = hosting
+        popover.behavior = .transient
+        popover.animates = true
+
+        let timer = Timer(timeInterval: 1.0 / 15, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshStatusItem() }
+        }
+        timer.tolerance = 0.02
+        RunLoop.main.add(timer, forMode: .common)
+        animationTimer = timer
+        refreshStatusItem()
 
         // Dev hook: `Cappy --keep-awake 30` starts a 30 second session on launch.
         let args = CommandLine.arguments
         if let i = args.firstIndex(of: "--keep-awake"), i + 1 < args.count, let seconds = Double(args[i + 1]) {
             caffeinator.start(for: seconds)
-            refreshTitle()
+        }
+        // Dev hook: `Cappy --show-menu` opens the dropdown on launch.
+        if args.contains("--show-menu"), let button = statusItem.button {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.togglePopover(button) }
         }
     }
 
@@ -38,20 +64,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         caffeinator.stop()
     }
 
-    @objc private func startOneMinute() { caffeinator.start(for: 60); refreshTitle() }
-    @objc private func startForever() { caffeinator.start(for: nil); refreshTitle() }
-    @objc private func stop() { caffeinator.stop(); refreshTitle() }
-
-    private func refreshTitle() {
-        guard caffeinator.isAwake else {
-            statusItem.button?.title = "Cappy (asleep)"
-            return
-        }
-        if let remaining = caffeinator.remaining {
-            let s = Int(remaining.rounded(.up))
-            statusItem.button?.title = String(format: "Cappy %d:%02d", s / 60, s % 60)
+    @objc private func togglePopover(_ sender: NSStatusBarButton) {
+        if popover.isShown {
+            popover.performClose(sender)
         } else {
-            statusItem.button?.title = "Cappy ∞"
+            NSApp.activate(ignoringOtherApps: true)
+            popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+            popover.contentViewController?.view.window?.makeKey()
+        }
+    }
+
+    private func refreshStatusItem() {
+        guard let button = statusItem.button else { return }
+        let awake = caffeinator.isAwake
+
+        let frame = CatAnimation.frame(awake: awake, at: Date.timeIntervalSinceReferenceDate)
+        if frame != shownFrame,
+           let images = menuBarImages[frame.pose], images.indices.contains(frame.index) {
+            button.image = images[frame.index]
+            shownFrame = frame
+        }
+
+        var title = ""
+        if awake {
+            title = caffeinator.remaining.map(TimeFormat.short) ?? "∞"
+        }
+        if title != shownTitle {
+            button.title = title
+            shownTitle = title
         }
     }
 }
