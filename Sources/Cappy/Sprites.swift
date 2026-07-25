@@ -51,15 +51,25 @@ enum CatSprites {
 
 extension CGImage {
     /// Scales pixel art with hard edges into an NSImage of the given point height.
-    /// Drawn at 2x so it stays sharp on Retina menu bars.
+    /// Rendered once into 1x and 2x bitmaps so the menu bar never redraws it.
     func pixelImage(pointHeight: CGFloat) -> NSImage {
         let scale = pointHeight / CGFloat(height)
-        let size = NSSize(width: (CGFloat(width) * scale).rounded(), height: pointHeight)
-        let image = NSImage(size: size, flipped: false) { rect in
-            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+        let size = NSSize(width: CGFloat(width) * scale, height: pointHeight)
+        let image = NSImage(size: size)
+        for factor in [1, 2] {
+            let pw = Int((size.width * CGFloat(factor)).rounded())
+            let ph = Int((size.height * CGFloat(factor)).rounded())
+            guard let ctx = CGContext(
+                data: nil, width: pw, height: ph, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { continue }
             ctx.interpolationQuality = .none
-            ctx.draw(self, in: rect)
-            return true
+            ctx.draw(self, in: CGRect(x: 0, y: 0, width: pw, height: ph))
+            guard let scaled = ctx.makeImage() else { continue }
+            let rep = NSBitmapImageRep(cgImage: scaled)
+            rep.size = size
+            image.addRepresentation(rep)
         }
         return image
     }

@@ -56,10 +56,9 @@ final class Caffeinator: ObservableObject {
     static let maxDuration: TimeInterval = 7 * 24 * 60 * 60
 
     func start(for duration: TimeInterval?) {
-        endDate = duration.map {
-            let seconds = $0.isFinite ? min(max(1, $0), Self.maxDuration) : Self.maxDuration
-            return Date().addingTimeInterval(seconds)
-        }
+        let seconds = duration.map { $0.isFinite ? min(max(1, $0), Self.maxDuration) : Self.maxDuration }
+        plannedSeconds = seconds
+        endDate = seconds.map { Date().addingTimeInterval($0) }
         isAwake = true
         relaunch()
         scheduleEndTimer()
@@ -78,11 +77,15 @@ final class Caffeinator: ObservableObject {
         endDate.map { max(0, $0.timeIntervalSinceNow) }
     }
 
-    /// The command line Cappy is running (or would run), for display.
+    /// Length of the current session as started (nil = until stopped).
+    @Published private(set) var plannedSeconds: TimeInterval?
+
+    /// The equivalent Terminal command for the current session, for display.
+    /// Uses the session's full length so it doesn't change every second.
     var commandLine: String {
         var parts = ["caffeinate"]
         if let flag = flags.argument { parts.append(flag) }
-        if let remaining { parts += ["-t", String(Int(remaining.rounded(.up)))] }
+        if isAwake, let plannedSeconds { parts += ["-t", String(Int(plannedSeconds.rounded(.up)))] }
         return parts.joined(separator: " ")
     }
 

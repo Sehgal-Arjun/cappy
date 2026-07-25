@@ -1,7 +1,6 @@
 import SwiftUI
 
 private let accent = Color(red: 0.85, green: 0.41, blue: 0.17)
-private let ink = Color(red: 0.11, green: 0.106, blue: 0.094)
 
 struct MenuView: View {
     @ObservedObject var caffeinator: Caffeinator
@@ -84,24 +83,32 @@ struct MenuView: View {
     private var flags: some View {
         VStack(alignment: .leading, spacing: 2) {
             SectionLabel("While awake, keep")
-            FlagRow(title: "Screen on", flag: "-d", isOn: $caffeinator.flags.display)
-            FlagRow(title: "Mac from idling", flag: "-i", isOn: $caffeinator.flags.idle)
-            FlagRow(title: "Disks spinning", flag: "-m", isOn: $caffeinator.flags.disk)
-            FlagRow(title: "System on, when plugged in", flag: "-s", isOn: $caffeinator.flags.system)
-            FlagRow(title: "You marked as active", flag: "-u", isOn: $caffeinator.flags.user)
-            TimelineView(.periodic(from: .now, by: 1)) { _ in
-                Text(caffeinator.commandLine)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
-            }
-            .padding(.top, 6)
+            flagRow("Screen on", "-d", \.display)
+            flagRow("Mac from idling", "-i", \.idle)
+            flagRow("Disks spinning", "-m", \.disk)
+            flagRow("System on, when plugged in", "-s", \.system)
+            flagRow("You marked as active", "-u", \.user)
+            Text(caffeinator.commandLine)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
+                .padding(.top, 6)
         }
         .padding(.horizontal, 4)
+    }
+
+    /// With every flag off caffeinate quietly falls back to -i, so the last
+    /// switch that's on can't be turned off.
+    private func flagRow(_ title: String, _ flag: String, _ key: WritableKeyPath<KeepAwakeFlags, Bool>) -> some View {
+        let isOn = caffeinator.flags[keyPath: key]
+        let isLast = isOn && caffeinator.flags.argument?.count == 2
+        return FlagRow(title: title, flag: flag, isOn: $caffeinator.flags[dynamicMember: key])
+            .disabled(isLast)
+            .help(isLast ? "Keep at least one on" : "")
     }
 
     // MARK: Footer
@@ -128,7 +135,7 @@ private struct CatStage: View {
     let awake: Bool
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 20)) { context in
+        TimelineView(.animation(minimumInterval: 0.1)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let frame = CatAnimation.frame(awake: awake, at: t)
             ZStack(alignment: .bottom) {
@@ -199,14 +206,14 @@ private struct PillButtonStyle: ButtonStyle {
             .font(.system(size: 13, weight: .semibold))
             .padding(.horizontal, 14)
             .frame(height: 32)
-            .foregroundStyle(filled ? Color.white : ink)
+            .foregroundStyle(filled ? Color(nsColor: .windowBackgroundColor) : Color.primary)
             .background(
                 RoundedRectangle(cornerRadius: 9)
-                    .fill(filled ? ink : Color.white)
+                    .fill(filled ? Color.primary : Color(nsColor: .controlBackgroundColor))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 9)
-                    .strokeBorder(filled ? ink : Color.black.opacity(0.18))
+                    .strokeBorder(filled ? Color.primary : Color.primary.opacity(0.18))
             )
             .opacity(configuration.isPressed ? 0.8 : 1)
     }
@@ -220,14 +227,14 @@ private struct ChipButtonStyle: ButtonStyle {
             .font(.system(size: 12, weight: .semibold))
             .frame(maxWidth: .infinity)
             .frame(height: 28)
-            .foregroundStyle(selected ? Color.white : ink)
+            .foregroundStyle(selected ? Color(nsColor: .windowBackgroundColor) : Color.primary)
             .background(
                 RoundedRectangle(cornerRadius: 7)
-                    .fill(selected ? ink : Color.white)
+                    .fill(selected ? Color.primary : Color(nsColor: .controlBackgroundColor))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 7)
-                    .strokeBorder(selected ? ink : Color.black.opacity(0.14))
+                    .strokeBorder(selected ? Color.primary : Color.primary.opacity(0.14))
             )
             .contentShape(Rectangle())
             .opacity(configuration.isPressed ? 0.8 : 1)
