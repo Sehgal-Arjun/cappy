@@ -1,0 +1,7 @@
+Cat sprites by Elthen's Pixel Art Shop
+https://elthen.itch.io/2d-pixel-art-cat-sprites
+
+Used under the creator's licence (free for commercial and non-commercial
+projects). These files are not covered by Cappy's MIT licence.
+
+Each strip is a row of 32x24 frames.
