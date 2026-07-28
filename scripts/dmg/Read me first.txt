@@ -1,0 +1,18 @@
+Hi! This is Cappy, a little cat that keeps your Mac awake.
+
+To install:
+1. Drag Cappy onto the Applications folder.
+2. Open Applications and double-click Cappy.
+
+The first time, macOS will say it can't check Cappy for malicious software
+(it isn't from the App Store). That's expected. To allow it:
+3. Click Done.
+4. Open System Settings > Privacy & Security.
+5. Scroll down and click "Open Anyway" next to Cappy, then confirm.
+
+After that, Cappy opens normally. Look for the cat in the menu bar at the top
+right of your screen and click it.
+
+- "Wake up" keeps your Mac awake. Pick how long with the buttons.
+- "Let it sleep" puts things back to normal.
+- Turn on "Open at login" so Cappy is always there.
