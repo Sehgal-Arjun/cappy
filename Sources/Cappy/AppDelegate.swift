@@ -8,6 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let popover = NSPopover()
     private let caffeinator = Caffeinator()
     private let settings = Settings()
+    private let loginItem = LoginItem()
+    private let notifier = Notifier()
 
     private var frameTimer: Timer?
     private var screensAsleep = false
@@ -38,8 +40,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let hosting = NSHostingController(rootView: MenuView(
             caffeinator: caffeinator,
             settings: settings,
+            loginItem: loginItem,
+            start: { [weak self] in self?.startSession() },
             quit: { NSApp.terminate(nil) }
         ))
+
+        caffeinator.onSessionEnded = { [weak self] reason in
+            guard let self, reason == .timeUp, self.settings.notifyWhenDone else { return }
+            self.notifier.postTimeUp()
+        }
         hosting.sizingOptions = .preferredContentSize
         popover.contentViewController = hosting
         popover.behavior = .transient
@@ -73,6 +82,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         caffeinator.stop()
+    }
+
+    private func startSession() {
+        let length = settings.sessionLength()
+        // Only timed sessions can run out, so that's when to ask about notifications.
+        if length != nil, settings.notifyWhenDone {
+            notifier.requestPermission()
+        }
+        caffeinator.start(for: length)
     }
 
     // MARK: - Dropdown
