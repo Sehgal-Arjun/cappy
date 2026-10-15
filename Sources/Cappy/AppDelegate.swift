@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             caffeinator: caffeinator,
             settings: settings,
             loginItem: loginItem,
+            notifier: notifier,
             start: { [weak self] in self?.startSession() },
             quit: { NSApp.terminate(nil) }
         ))
@@ -101,6 +102,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         } else {
             let front = NSWorkspace.shared.frontmostApplication
             previousApp = front == NSRunningApplication.current ? nil : front
+            // Settings can change behind our back in System Settings.
+            loginItem.refresh()
+            notifier.refreshStatus()
             NSApp.activate(ignoringOtherApps: true)
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
