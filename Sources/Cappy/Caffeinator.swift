@@ -27,6 +27,8 @@ final class Caffeinator: ObservableObject {
     enum EndReason {
         case stoppedByUser
         case timeUp
+        /// Time ran out while the Mac was asleep; noticed on wake, well after the fact.
+        case timeUpWhileAsleep
         case processExited
     }
 
@@ -156,6 +158,10 @@ final class Caffeinator: ObservableObject {
 
     private func end(_ reason: EndReason) {
         guard isAwake else { return }
+        var reason = reason
+        if reason == .timeUp, let endDate, Date().timeIntervalSince(endDate) > 60 {
+            reason = .timeUpWhileAsleep
+        }
         killProcess()
         endTimer?.invalidate()
         endTimer = nil
