@@ -19,7 +19,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "scripts" / "dmg" / "background.tiff"
 SLEEP_SPRITE = ROOT / "Resources" / "Sprites" / "sleep.png"
 
-W, H = 640, 440          # window content size in points
+W, H = 640, 520          # art size in points; taller than the window so the
+                         # shelf keeps going if Finder shows extra bars
+CONTENT_BOTTOM = 400     # everything that matters sits above this line
 SHELF_TOP = 236          # icons sit on this line
 ICON_Y = 190             # centre of the top row of icons
 UNIT = 4                 # one "pixel" of the pixel art, in points
@@ -72,7 +74,7 @@ def font(size: float, weight: str, s: int) -> ImageFont.FreeTypeFont:
     try:
         f.set_variation_by_name(weight)
     except Exception:
-        pass
+        print(f"warning: {FONT} has no '{weight}' weight; using its default")
     return f
 
 
@@ -153,14 +155,14 @@ def draw(s: int) -> Image.Image:
     sprite = sprite.crop(sprite.getbbox())
     scale = 3 * s
     sprite = sprite.resize((sprite.width * scale, sprite.height * scale), Image.NEAREST)
-    cat_x, cat_bottom = 34 * s, 420 * s
+    cat_x, cat_bottom = 34 * s, (CONTENT_BOTTOM - 4) * s
     img.paste(sprite, (cat_x, cat_bottom - sprite.height), sprite)
     zz = font(13, "Bold", s)
     d.text((cat_x + sprite.width - 6 * s, cat_bottom - sprite.height - 20 * s), "z", font=zz, fill=STAR)
     d.text((cat_x + sprite.width + 4 * s, cat_bottom - sprite.height - 32 * s), "z", font=zz, fill=STAR)
 
     # And a cappuccino on the other side.
-    gx, gy = (W - 92) // UNIT, (H - 56) // UNIT
+    gx, gy = (W - 92) // UNIT, (CONTENT_BOTTOM - 40) // UNIT
     colors = {"#": INK, "m": CUP, "c": CREMA}
     for r, row in enumerate(MUG):
         for c, ch in enumerate(row):
