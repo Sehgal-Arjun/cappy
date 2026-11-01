@@ -214,32 +214,34 @@ struct MenuView: View {
 
 private struct CatStage: View {
     let awake: Bool
+    private static let floor: CGFloat = 20
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 0.1)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let frame = CatAnimation.frame(awake: awake, at: t)
             ZStack(alignment: .bottom) {
-                Rectangle()
-                    .fill(Color.black.opacity(0.07))
-                    .frame(height: 2)
-                    .padding(.bottom, 14)
+                // A floor for the cat to sit on, like the shelf in the DMG.
+                VStack(spacing: 0) {
+                    Rectangle().fill(Color.black.opacity(0.10)).frame(height: 2)
+                    Rectangle().fill(Color.black.opacity(0.05))
+                }
+                .frame(height: Self.floor)
                 if let image = CatAnimation.image(for: frame) {
                     Image(decorative: image, scale: 1)
                         .interpolation(.none)
                         .resizable()
                         .frame(width: SpriteStrip.frameSize.width * 4,
                                height: SpriteStrip.frameSize.height * 4)
-                        .padding(.bottom, 15)
+                        // Paws rest just over the floor's top edge.
+                        .padding(.bottom, Self.floor - 2)
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 132)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(awake ? Color(red: 0.965, green: 0.937, blue: 0.886)
-                                : Color(red: 0.906, green: 0.898, blue: 0.933))
-            )
+            .frame(height: 122)
+            .background(awake ? Color(red: 0.965, green: 0.937, blue: 0.886)
+                              : Color(red: 0.906, green: 0.898, blue: 0.933))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
             .animation(.easeInOut(duration: 0.3), value: awake)
         }
         .accessibilityElement()
