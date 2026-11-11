@@ -75,7 +75,7 @@ struct MenuView: View {
                 chip(.until)
                     .frame(width: 64)
                 DatePicker("Until", selection: untilBinding,
-                           in: Date()...Settings.untilLimit,
+                           in: Settings.untilEarliest...Settings.untilLimit,
                            displayedComponents: [.date, .hourAndMinute])
                     .labelsHidden()
                     .datePickerStyle(.stepperField)
@@ -106,7 +106,8 @@ struct MenuView: View {
         let now = Date()
         let target = settings.effectiveUntilDate(after: now)
         let when = target.formatted(.dateTime.weekday(.abbreviated).hour().minute())
-        let s = Int(target.timeIntervalSince(now))
+        // Round up to whole minutes so 1h 59m 30s reads "2h 0m", not "1h 59m".
+        let s = Int((target.timeIntervalSince(now) / 60).rounded(.up)) * 60
         let d = s / 86400, h = (s % 86400) / 3600, m = (s % 3600) / 60
         let gap = d > 0 ? "\(d)d \(h)h" : h > 0 ? "\(h)h \(m)m" : "\(max(m, 1))m"
         return "\(when) · in \(gap)"
