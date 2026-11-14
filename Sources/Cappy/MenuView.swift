@@ -7,6 +7,7 @@ struct MenuView: View {
     @ObservedObject var settings: Settings
     @ObservedObject var loginItem: LoginItem
     @ObservedObject var notifier: Notifier
+    @ObservedObject var updater: Updater
     @State private var untilRestart: DispatchWorkItem?
     /// Starts a session using the current duration choice.
     let start: () -> Void
@@ -213,6 +214,27 @@ struct MenuView: View {
                     .font(.system(size: 11))
                     .padding(.horizontal, 4)
             }
+            if updater.updateAvailable {
+                Button {
+                    updater.checkForUpdates()
+                } label: {
+                    Label("A new version of Cappy is ready. Install…", systemImage: "arrow.down.circle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(.link)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+            }
+            Button(action: updater.checkForUpdates) {
+                HStack {
+                    Text("Check for updates…")
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 4)
             quitButton
         }
     }
