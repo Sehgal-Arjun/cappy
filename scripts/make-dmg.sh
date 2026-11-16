@@ -14,7 +14,7 @@ ln -s /Applications "$STAGE/Applications"
 cp "scripts/dmg/Read me first.txt" "$STAGE/"
 
 DMG="dist/Cappy-$VERSION.dmg"
-rm -f "$DMG"
+rm -f dist/Cappy-*.dmg
 hdiutil create -volname "Cappy" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "$DMG" >/dev/null
 
 echo "Made $DMG"

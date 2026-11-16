@@ -61,7 +61,9 @@ def main() -> None:
             for factor in (1, 2):
                 px = size * factor
                 name = f"icon_{size}x{size}{'@2x' if factor == 2 else ''}.png"
-                master.resize((px, px), Image.LANCZOS).save(iconset / name)
+                # Small sizes: hard pixels read better than a blurry shrink.
+                resample = Image.NEAREST if px <= 64 else Image.LANCZOS
+                master.resize((px, px), resample).save(iconset / name)
         subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(OUT)], check=True)
     print(f"Wrote {OUT}")
 
