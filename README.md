@@ -10,7 +10,12 @@ Needs macOS 13+ and Swift 5.10+ (the Xcode command line tools are enough).
 
 ```bash
 ./scripts/build-app.sh   # builds dist/Cappy.app
+./scripts/make-dmg.sh    # builds the app and wraps it in dist/Cappy-<version>.dmg
 ```
+
+The DMG has Cappy, a shortcut to Applications and a "Read me first" note with the steps below. Bump `CFBundleShortVersionString` in `Resources/Info.plist` for a new release.
+
+The app icon is generated from the cat sprite with `python3 scripts/make-icon.py` (needs Pillow). The resulting `Resources/AppIcon.icns` is committed, so you only need this to change the icon.
 
 ## Opening it the first time
 
