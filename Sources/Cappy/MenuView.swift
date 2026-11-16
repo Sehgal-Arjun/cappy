@@ -255,7 +255,7 @@ private struct CatStage: View {
                         .frame(width: SpriteStrip.frameSize.width * 4,
                                height: SpriteStrip.frameSize.height * 4)
                         // Paws rest just over the floor's top edge.
-                        .padding(.bottom, Self.floor - 3)
+                        .padding(.bottom, Self.floor - 2)
                 }
             }
             .frame(maxWidth: .infinity)
