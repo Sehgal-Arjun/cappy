@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let settings = Settings()
     private let loginItem = LoginItem()
     private let notifier = Notifier()
+    private let updater = Updater()
 
     private var frameTimer: Timer?
     private var screensAsleep = false
@@ -42,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             settings: settings,
             loginItem: loginItem,
             notifier: notifier,
+            updater: updater,
             start: { [weak self] in self?.startSession() },
             quit: { NSApp.terminate(nil) }
         ))
@@ -72,6 +74,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let args = CommandLine.arguments
         if let i = args.firstIndex(of: "--keep-awake"), i + 1 < args.count, let seconds = Double(args[i + 1]) {
             caffeinator.start(for: seconds)
+        }
+        // Dev hook: `Cappy --check-updates` runs a background update check on launch.
+        if args.contains("--check-updates") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.updater.checkInBackground() }
+        }
+        // Dev hook: `Cappy --quit-after 20` quits normally after 20 seconds
+        // (lets Sparkle's install-on-quit run in tests).
+        if let i = args.firstIndex(of: "--quit-after"), i + 1 < args.count, let seconds = Double(args[i + 1]) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { NSApp.terminate(nil) }
         }
         // Dev hook: `Cappy --show-menu` opens the dropdown on launch.
         if args.contains("--show-menu"), let button = statusItem.button {
