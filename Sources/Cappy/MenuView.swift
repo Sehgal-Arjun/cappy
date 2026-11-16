@@ -261,7 +261,7 @@ private struct CatStage: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 122)
+            .frame(height: 158, alignment: .bottom)
             .background(awake ? Color(red: 0.965, green: 0.937, blue: 0.886)
                               : Color(red: 0.906, green: 0.898, blue: 0.933))
             .clipShape(RoundedRectangle(cornerRadius: 10))
