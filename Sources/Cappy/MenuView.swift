@@ -74,25 +74,46 @@ struct MenuView: View {
             HStack(spacing: 8) {
                 chip(.until)
                     .frame(width: 64)
-                DatePicker("Until", selection: untilBinding, displayedComponents: .hourAndMinute)
+                DatePicker("Until", selection: untilBinding,
+                           in: Date()...Settings.untilLimit,
+                           displayedComponents: [.date, .hourAndMinute])
                     .labelsHidden()
                     .datePickerStyle(.stepperField)
-                TimelineView(.periodic(from: .now, by: 30)) { _ in
-                    if untilIsTomorrow {
-                        Text("tomorrow")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
-                }
                 Spacer(minLength: 0)
+            }
+            TimelineView(.periodic(from: .now, by: 30)) { _ in
+                let offset = settings.untilDayOffset()
+                HStack(spacing: 5) {
+                    ForEach([(0, "Today"), (1, "Tomorrow"), (2, "Day after")], id: \.0) { day, label in
+                        Button(label) { pickDay(day) }
+                            .buttonStyle(ChipButtonStyle(selected: settings.duration == .until && offset == day, small: true))
+                    }
+                    Spacer(minLength: 4)
+                    Text(untilSummary)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
             }
         }
         .padding(.horizontal, 4)
     }
 
-    /// The picked time has already gone by today, so "Until" means tomorrow.
-    private var untilIsTomorrow: Bool {
-        !Calendar.current.isDateInToday(settings.nextUntilDate())
+    /// "Wed 5:00 pm · in 1d 4h", so a date picked in the stepper is easy to sanity-check.
+    private var untilSummary: String {
+        let now = Date()
+        let target = settings.effectiveUntilDate(after: now)
+        let when = target.formatted(.dateTime.weekday(.abbreviated).hour().minute())
+        let s = Int(target.timeIntervalSince(now))
+        let d = s / 86400, h = (s % 86400) / 3600, m = (s % 3600) / 60
+        let gap = d > 0 ? "\(d)d \(h)h" : h > 0 ? "\(h)h \(m)m" : "\(max(m, 1))m"
+        return "\(when) · in \(gap)"
+    }
+
+    private func pickDay(_ day: Int) {
+        settings.setUntilDay(day)
+        pick(.until)
     }
 
     private func chip(_ choice: DurationChoice) -> some View {
@@ -105,11 +126,11 @@ struct MenuView: View {
     /// restarted once the user stops clicking, not on every step.
     private var untilBinding: Binding<Date> {
         Binding(
-            get: { settings.untilTime },
+            get: { settings.effectiveUntilDate() },
             set: { newValue in
-                let before = settings.untilMinutes
-                settings.untilTime = newValue
-                guard settings.untilMinutes != before || settings.duration != .until else { return }
+                let before = settings.untilDate
+                settings.untilDate = newValue
+                guard settings.untilDate != before || settings.duration != .until else { return }
                 settings.duration = .until
                 untilRestart?.cancel()
                 guard caffeinator.isAwake else { return }
@@ -322,12 +343,15 @@ private struct PillButtonStyle: ButtonStyle {
 
 private struct ChipButtonStyle: ButtonStyle {
     let selected: Bool
+    /// Compact, content-sized chip (the Until day shortcuts).
+    var small = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 12, weight: .semibold))
-            .frame(maxWidth: .infinity)
-            .frame(height: 28)
+            .font(.system(size: small ? 11 : 12, weight: .semibold))
+            .padding(.horizontal, small ? 8 : 0)
+            .frame(maxWidth: small ? nil : .infinity)
+            .frame(height: small ? 22 : 28)
             .foregroundStyle(selected ? Color(nsColor: .windowBackgroundColor) : Color.primary)
             .background(
                 RoundedRectangle(cornerRadius: 7)

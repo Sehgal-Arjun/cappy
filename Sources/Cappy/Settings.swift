@@ -41,9 +41,9 @@ final class Settings: ObservableObject {
         didSet { defaults.set(duration.rawValue, forKey: Keys.duration) }
     }
 
-    /// Minutes after midnight for the "Until" choice.
-    @Published var untilMinutes: Int {
-        didSet { defaults.set(untilMinutes, forKey: Keys.untilMinutes) }
+    /// The "Until" choice: a date and time, up to a week ahead.
+    @Published var untilDate: Date {
+        didSet { defaults.set(untilDate.timeIntervalSince1970, forKey: Keys.untilDate) }
     }
 
     @Published var notifyWhenDone: Bool {
@@ -54,41 +54,69 @@ final class Settings: ObservableObject {
 
     private enum Keys {
         static let duration = "durationChoice"
-        static let untilMinutes = "untilMinutes"
+        static let untilDate = "untilDate"
+        static let legacyUntilMinutes = "untilMinutes"
         static let notify = "notifyWhenDone"
     }
 
     init() {
         duration = DurationChoice(rawValue: defaults.string(forKey: Keys.duration) ?? "") ?? .h2
-        untilMinutes = (defaults.object(forKey: Keys.untilMinutes) as? Int) ?? 17 * 60
+        if let stamp = defaults.object(forKey: Keys.untilDate) as? Double {
+            untilDate = Date(timeIntervalSince1970: stamp)
+        } else {
+            // 1.0.0 stored only a time of day (default 5 pm).
+            let minutes = (defaults.object(forKey: Keys.legacyUntilMinutes) as? Int) ?? 17 * 60
+            untilDate = Self.next(hour: minutes / 60, minute: minutes % 60, after: Date())
+        }
         notifyWhenDone = (defaults.object(forKey: Keys.notify) as? Bool) ?? true
     }
+
+    /// Latest "Until" the picker allows: Cappy's longest session.
+    static var untilLimit: Date { Date().addingTimeInterval(Caffeinator.maxDuration) }
 
     /// Session length for the current choice; nil = until stopped.
     func sessionLength(from now: Date = Date()) -> TimeInterval? {
         switch duration {
         case .forever: return nil
-        case .until: return nextUntilDate(after: now).timeIntervalSince(now)
+        case .until: return effectiveUntilDate(after: now).timeIntervalSince(now)
         default: return duration.presetSeconds
         }
     }
 
-    /// The next time the clock reads the "Until" time: later today, or tomorrow.
-    func nextUntilDate(after now: Date = Date()) -> Date {
-        let cal = Calendar.current
-        let parts = DateComponents(hour: untilMinutes / 60, minute: untilMinutes % 60)
-        return cal.nextDate(after: now, matching: parts, matchingPolicy: .nextTime) ?? now.addingTimeInterval(3600)
+    /// The saved Until date, or, once it's gone by, the next time the clock
+    /// reads that time of day. Never more than a week out.
+    func effectiveUntilDate(after now: Date = Date()) -> Date {
+        if untilDate > now {
+            return min(untilDate, now.addingTimeInterval(Caffeinator.maxDuration))
+        }
+        let c = Calendar.current.dateComponents([.hour, .minute], from: untilDate)
+        return Self.next(hour: c.hour ?? 17, minute: c.minute ?? 0, after: now)
     }
 
-    /// The "Until" time as a Date today, for the time picker.
-    var untilTime: Date {
-        get {
-            Calendar.current.date(bySettingHour: untilMinutes / 60, minute: untilMinutes % 60, second: 0, of: Date()) ?? Date()
+    /// Moves Until to `daysFromToday` (0 = today), keeping its time of day.
+    /// "Today" at a time that's already passed becomes the next full hour.
+    func setUntilDay(_ daysFromToday: Int, now: Date = Date()) {
+        let cal = Calendar.current
+        let time = cal.dateComponents([.hour, .minute], from: untilDate)
+        let day = cal.date(byAdding: .day, value: daysFromToday, to: cal.startOfDay(for: now)) ?? now
+        var target = cal.date(bySettingHour: time.hour ?? 17, minute: time.minute ?? 0, second: 0, of: day) ?? now
+        if target <= now {
+            let nextHour = cal.nextDate(after: now, matching: DateComponents(minute: 0), matchingPolicy: .nextTime)
+            target = nextHour ?? now.addingTimeInterval(3600)
         }
-        set {
-            let c = Calendar.current.dateComponents([.hour, .minute], from: newValue)
-            untilMinutes = (c.hour ?? 0) * 60 + (c.minute ?? 0)
-        }
+        untilDate = target
+    }
+
+    /// Days from today to the effective Until date (0 = today, 1 = tomorrow…).
+    func untilDayOffset(now: Date = Date()) -> Int {
+        let cal = Calendar.current
+        return cal.dateComponents([.day], from: cal.startOfDay(for: now),
+                                  to: cal.startOfDay(for: effectiveUntilDate(after: now))).day ?? 0
+    }
+
+    private static func next(hour: Int, minute: Int, after now: Date) -> Date {
+        Calendar.current.nextDate(after: now, matching: DateComponents(hour: hour, minute: minute),
+                                  matchingPolicy: .nextTime) ?? now.addingTimeInterval(3600)
     }
 }
 
