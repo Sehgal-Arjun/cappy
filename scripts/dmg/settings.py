@@ -14,14 +14,16 @@ symlinks = {"Applications": "/Applications"}
 hide_extensions = ["Read me first.txt"]
 
 background = os.path.join(here, "background.tiff")
-window_rect = ((200, 140), (640, 440))
+# Height covers the 440pt layout plus the title bar, with room to spare
+# for Finder tab/path bars; the art runs on below that.
+window_rect = ((200, 120), (640, 500))
 icon_size = 96
 text_size = 13
 label_pos = "bottom"
 icon_locations = {
     "Cappy.app": (180, 190),
     "Applications": (460, 190),
-    "Read me first.txt": (320, 352),
+    "Read me first.txt": (320, 322),
 }
 
 default_view = "icon-view"
