@@ -27,8 +27,10 @@ Cappy updates itself with [Sparkle](https://sparkle-project.org). Installed copi
 
 To ship a new version:
 
-1. Bump `CFBundleShortVersionString` **and** `CFBundleVersion` in `Resources/Info.plist` (Sparkle compares `CFBundleVersion`), and merge to `main`.
-2. From a clean `main`, run `./scripts/release.sh [notes.md]`. It builds the DMG, signs it with the Sparkle key, writes `appcast.xml` and creates the GitHub release with both attached.
+1. Bump `CFBundleShortVersionString` **and** `CFBundleVersion` in `Resources/Info.plist` (Sparkle compares `CFBundleVersion`), merge to `main` and push.
+2. From a clean `main` that matches GitHub, run `./scripts/release.sh [notes.md]`. It builds the DMG, signs it with the Sparkle key, writes `appcast.xml` and creates the GitHub release with both attached. It refuses to run if the build number didn't go up or the tag already exists.
+
+**Only release through `release.sh`.** Installed copies read the feed from the *latest* release, so a release made by hand without `appcast.xml` quietly stops every update.
 
 Updates are signed with an EdDSA key kept in the login Keychain under the account `cappy` (created with Sparkle's `generate_keys --account cappy`; `./scripts/sparkle-tools.sh` fetches the tools). The public half is `SUPublicEDKey` in `Info.plist`. **Back up that key** (`generate_keys --account cappy -x cappy-key.txt`, then store it somewhere safe): without it, no future update can be installed by existing copies.
 

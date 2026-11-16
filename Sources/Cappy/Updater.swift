@@ -32,9 +32,12 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate, SPUStandard
 
     // MARK: SPUUpdaterDelegate
 
-    /// Test hook: `CAPPY_FEED_URL=… Cappy` points at another feed.
+    /// Test hook: `CAPPY_FEED_URL=… Cappy --dev` points at another feed.
+    /// Needs the launch argument too, so an environment variable alone can't
+    /// redirect a normal install.
     nonisolated func feedURLString(for updater: SPUUpdater) -> String? {
-        ProcessInfo.processInfo.environment["CAPPY_FEED_URL"]
+        guard CommandLine.arguments.contains("--dev") else { return nil }
+        return ProcessInfo.processInfo.environment["CAPPY_FEED_URL"]
     }
 
     // MARK: SPUStandardUserDriverDelegate (gentle reminders for a menu bar app)
