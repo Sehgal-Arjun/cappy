@@ -83,17 +83,18 @@ struct MenuView: View {
             }
             TimelineView(.periodic(from: .now, by: 30)) { _ in
                 let offset = settings.untilDayOffset()
-                HStack(spacing: 5) {
-                    ForEach([(0, "Today"), (1, "Tomorrow"), (2, "Day after")], id: \.0) { day, label in
-                        Button(label) { pickDay(day) }
-                            .buttonStyle(ChipButtonStyle(selected: settings.duration == .until && offset == day, small: true))
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 5) {
+                        ForEach([(0, "Today"), (1, "Tomorrow"), (2, "Day after")], id: \.0) { day, label in
+                            Button(label) { pickDay(day) }
+                                .buttonStyle(ChipButtonStyle(selected: settings.duration == .until && offset == day, small: true))
+                                .fixedSize()
+                        }
                     }
-                    Spacer(minLength: 4)
                     Text(untilSummary)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
-                        .lineLimit(1)
                 }
             }
         }
