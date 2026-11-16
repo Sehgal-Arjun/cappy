@@ -6,6 +6,8 @@ struct MenuView: View {
     @ObservedObject var caffeinator: Caffeinator
     @ObservedObject var settings: Settings
     @ObservedObject var loginItem: LoginItem
+    @ObservedObject var notifier: Notifier
+    @State private var untilRestart: DispatchWorkItem?
     /// Starts a session using the current duration choice.
     let start: () -> Void
     let quit: () -> Void
@@ -75,10 +77,22 @@ struct MenuView: View {
                 DatePicker("Until", selection: untilBinding, displayedComponents: .hourAndMinute)
                     .labelsHidden()
                     .datePickerStyle(.stepperField)
+                TimelineView(.periodic(from: .now, by: 30)) { _ in
+                    if untilIsTomorrow {
+                        Text("tomorrow")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Spacer(minLength: 0)
             }
         }
         .padding(.horizontal, 4)
+    }
+
+    /// The picked time has already gone by today, so "Until" means tomorrow.
+    private var untilIsTomorrow: Bool {
+        !Calendar.current.isDateInToday(settings.nextUntilDate())
     }
 
     private func chip(_ choice: DurationChoice) -> some View {
@@ -87,13 +101,21 @@ struct MenuView: View {
             .accessibilityAddTraits(settings.duration == choice ? .isSelected : [])
     }
 
-    /// Editing the time also selects "Until".
+    /// Editing the time also selects "Until". While awake, the session is
+    /// restarted once the user stops clicking, not on every step.
     private var untilBinding: Binding<Date> {
         Binding(
             get: { settings.untilTime },
-            set: {
-                settings.untilTime = $0
-                pick(.until)
+            set: { newValue in
+                let before = settings.untilMinutes
+                settings.untilTime = newValue
+                guard settings.untilMinutes != before || settings.duration != .until else { return }
+                settings.duration = .until
+                untilRestart?.cancel()
+                guard caffeinator.isAwake else { return }
+                let work = DispatchWorkItem { [start] in start() }
+                untilRestart = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
             }
         )
     }
@@ -155,10 +177,21 @@ struct MenuView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
-            SettingRow(title: "Tell me when time's up", isOn: $settings.notifyWhenDone)
+            SettingRow(title: "Tell me when time's up", isOn: Binding(
+                get: { settings.notifyWhenDone },
+                set: {
+                    settings.notifyWhenDone = $0
+                    if $0 { notifier.requestPermission() }
+                }
+            ))
+            if settings.notifyWhenDone && notifier.isBlocked {
+                Button("Notifications are off for Cappy. Turn them on…") { notifier.openSystemSettings() }
+                    .buttonStyle(.link)
+                    .font(.system(size: 11))
+                    .padding(.horizontal, 4)
+            }
             quitButton
         }
-        .onAppear { loginItem.refresh() }
     }
 
     private var quitButton: some View {
