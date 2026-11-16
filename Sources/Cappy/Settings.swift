@@ -48,13 +48,13 @@ final class Settings: ObservableObject {
 }
 
 enum TimeFormat {
-    /// "1:42" or "14m" for the menu bar.
+    /// "1h42", "14m" or "<1m" for the menu bar. Only changes once a minute.
     static func short(_ seconds: TimeInterval) -> String {
         let s = Int(seconds.rounded(.up))
         let h = s / 3600, m = (s % 3600) / 60
-        if h > 0 { return String(format: "%d:%02d", h, m) }
+        if h > 0 { return String(format: "%dh%02d", h, m) }
         if m > 0 { return "\(m)m" }
-        return "\(s)s"
+        return "<1m"
     }
 
     /// "1h 42m left" or "3m 20s left" for the menu.

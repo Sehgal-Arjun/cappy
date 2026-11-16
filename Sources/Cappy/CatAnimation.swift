@@ -34,6 +34,26 @@ enum CatAnimation {
         return frame(.groom, at: t - (cycle - groomLength))
     }
 
+    /// Seconds until `frame(awake:at:)` returns something different,
+    /// or nil when the cat is standing still (Reduce Motion).
+    static func timeUntilNextFrame(awake: Bool, at time: TimeInterval) -> TimeInterval? {
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { return nil }
+        guard awake else { return untilBoundary(.sleep, at: time) }
+
+        let cycle: TimeInterval = 11
+        let groomStart = cycle - loopLength(.groom) * 2
+        let t = time.truncatingRemainder(dividingBy: cycle)
+        if t < groomStart {
+            return min(untilBoundary(.idle, at: t), groomStart - t)
+        }
+        return min(untilBoundary(.groom, at: t - groomStart), cycle - t)
+    }
+
+    private static func untilBoundary(_ pose: Pose, at time: TimeInterval) -> TimeInterval {
+        let d = strip(for: pose).frameDuration
+        return d - time.truncatingRemainder(dividingBy: d)
+    }
+
     static func image(for frame: Frame) -> CGImage? {
         let frames = strip(for: frame.pose).frames
         return frames.indices.contains(frame.index) ? frames[frame.index] : nil
