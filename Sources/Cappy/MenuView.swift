@@ -5,6 +5,11 @@ private let accent = Color(red: 0.85, green: 0.41, blue: 0.17)
 struct MenuView: View {
     @ObservedObject var caffeinator: Caffeinator
     @ObservedObject var settings: Settings
+    @ObservedObject var loginItem: LoginItem
+    @ObservedObject var notifier: Notifier
+    @State private var untilRestart: DispatchWorkItem?
+    /// Starts a session using the current duration choice.
+    let start: () -> Void
     let quit: () -> Void
 
     var body: some View {
@@ -42,7 +47,7 @@ struct MenuView: View {
                 Button("Let it sleep") { caffeinator.stop() }
                     .buttonStyle(PillButtonStyle(filled: false))
             } else {
-                Button("Wake up") { caffeinator.start(for: settings.duration.seconds) }
+                Button("Wake up", action: start)
                     .buttonStyle(PillButtonStyle(filled: true))
                     .keyboardShortcut(.defaultAction)
             }
@@ -62,20 +67,63 @@ struct MenuView: View {
         VStack(alignment: .leading, spacing: 7) {
             SectionLabel("How long")
             HStack(spacing: 5) {
-                ForEach(DurationChoice.allCases) { choice in
-                    Button(choice.label) { pick(choice) }
-                        .buttonStyle(ChipButtonStyle(selected: settings.duration == choice))
-                        .accessibilityAddTraits(settings.duration == choice ? .isSelected : [])
+                ForEach(DurationChoice.presets) { choice in
+                    chip(choice)
                 }
+            }
+            HStack(spacing: 8) {
+                chip(.until)
+                    .frame(width: 64)
+                DatePicker("Until", selection: untilBinding, displayedComponents: .hourAndMinute)
+                    .labelsHidden()
+                    .datePickerStyle(.stepperField)
+                TimelineView(.periodic(from: .now, by: 30)) { _ in
+                    if untilIsTomorrow {
+                        Text("tomorrow")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
             }
         }
         .padding(.horizontal, 4)
     }
 
+    /// The picked time has already gone by today, so "Until" means tomorrow.
+    private var untilIsTomorrow: Bool {
+        !Calendar.current.isDateInToday(settings.nextUntilDate())
+    }
+
+    private func chip(_ choice: DurationChoice) -> some View {
+        Button(choice.label) { pick(choice) }
+            .buttonStyle(ChipButtonStyle(selected: settings.duration == choice))
+            .accessibilityAddTraits(settings.duration == choice ? .isSelected : [])
+    }
+
+    /// Editing the time also selects "Until". While awake, the session is
+    /// restarted once the user stops clicking, not on every step.
+    private var untilBinding: Binding<Date> {
+        Binding(
+            get: { settings.untilTime },
+            set: { newValue in
+                let before = settings.untilMinutes
+                settings.untilTime = newValue
+                guard settings.untilMinutes != before || settings.duration != .until else { return }
+                settings.duration = .until
+                untilRestart?.cancel()
+                guard caffeinator.isAwake else { return }
+                let work = DispatchWorkItem { [start] in start() }
+                untilRestart = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
+            }
+        )
+    }
+
     private func pick(_ choice: DurationChoice) {
         settings.duration = choice
         // Already awake: restart the clock with the new length.
-        if caffeinator.isAwake { caffeinator.start(for: choice.seconds) }
+        if caffeinator.isAwake { start() }
     }
 
     // MARK: Flags
@@ -114,6 +162,39 @@ struct MenuView: View {
     // MARK: Footer
 
     private var footer: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            SettingRow(title: "Open at login", isOn: Binding(
+                get: { loginItem.isEnabled },
+                set: { loginItem.set($0) }
+            ))
+            if loginItem.needsApproval {
+                Button("Allow Cappy in Login Items settings…") { loginItem.openSystemSettings() }
+                    .buttonStyle(.link)
+                    .font(.system(size: 11))
+            }
+            if let message = loginItem.errorMessage {
+                Text(message)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            SettingRow(title: "Tell me when time's up", isOn: Binding(
+                get: { settings.notifyWhenDone },
+                set: {
+                    settings.notifyWhenDone = $0
+                    if $0 { notifier.requestPermission() }
+                }
+            ))
+            if settings.notifyWhenDone && notifier.isBlocked {
+                Button("Notifications are off for Cappy. Turn them on…") { notifier.openSystemSettings() }
+                    .buttonStyle(.link)
+                    .font(.system(size: 11))
+                    .padding(.horizontal, 4)
+            }
+            quitButton
+        }
+    }
+
+    private var quitButton: some View {
         Button(action: quit) {
             HStack {
                 Text("Quit Cappy")
@@ -195,6 +276,24 @@ private struct FlagRow: View {
         .toggleStyle(.switch)
         .controlSize(.mini)
         .frame(minHeight: 26)
+    }
+}
+
+private struct SettingRow: View {
+    let title: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            HStack {
+                Text(title).font(.system(size: 13))
+                Spacer()
+            }
+        }
+        .toggleStyle(.switch)
+        .controlSize(.mini)
+        .frame(minHeight: 26)
+        .padding(.horizontal, 4)
     }
 }
 
