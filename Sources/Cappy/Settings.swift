@@ -74,6 +74,16 @@ final class Settings: ObservableObject {
     /// Latest "Until" the picker allows: Cappy's longest session.
     static var untilLimit: Date { Date().addingTimeInterval(Caffeinator.maxDuration) }
 
+    /// Earliest "Until" the picker allows: the start of the next minute, so
+    /// clamping never stores a time with seconds that's already gone by.
+    static var untilEarliest: Date { nextMinute(after: Date()) }
+
+    private static func nextMinute(after now: Date) -> Date {
+        let cal = Calendar.current
+        return cal.nextDate(after: now, matching: DateComponents(second: 0), matchingPolicy: .nextTime)
+            ?? now.addingTimeInterval(60)
+    }
+
     /// Session length for the current choice; nil = until stopped.
     func sessionLength(from now: Date = Date()) -> TimeInterval? {
         switch duration {
@@ -89,20 +99,29 @@ final class Settings: ObservableObject {
         if untilDate > now {
             return min(untilDate, now.addingTimeInterval(Caffeinator.maxDuration))
         }
+        // Only just passed (e.g. picked "now" a moment ago): mean the next
+        // minute, not this time tomorrow.
+        if now.timeIntervalSince(untilDate) < 120 {
+            return Self.nextMinute(after: now)
+        }
         let c = Calendar.current.dateComponents([.hour, .minute], from: untilDate)
         return Self.next(hour: c.hour ?? 17, minute: c.minute ?? 0, after: now)
     }
 
     /// Moves Until to `daysFromToday` (0 = today), keeping its time of day.
-    /// "Today" at a time that's already passed becomes the next full hour.
+    /// "Today" at a time that's already passed becomes the first full hour at
+    /// least half an hour away, or 11:59 pm if that would spill into tomorrow.
     func setUntilDay(_ daysFromToday: Int, now: Date = Date()) {
         let cal = Calendar.current
         let time = cal.dateComponents([.hour, .minute], from: untilDate)
         let day = cal.date(byAdding: .day, value: daysFromToday, to: cal.startOfDay(for: now)) ?? now
         var target = cal.date(bySettingHour: time.hour ?? 17, minute: time.minute ?? 0, second: 0, of: day) ?? now
         if target <= now {
-            let nextHour = cal.nextDate(after: now, matching: DateComponents(minute: 0), matchingPolicy: .nextTime)
-            target = nextHour ?? now.addingTimeInterval(3600)
+            let soon = now.addingTimeInterval(30 * 60)
+            let hour = cal.nextDate(after: soon, matching: DateComponents(minute: 0), matchingPolicy: .nextTime)
+                ?? soon
+            let lastMinute = cal.date(bySettingHour: 23, minute: 59, second: 0, of: now) ?? hour
+            target = cal.isDate(hour, inSameDayAs: now) ? hour : max(lastMinute, Self.nextMinute(after: now))
         }
         untilDate = target
     }
