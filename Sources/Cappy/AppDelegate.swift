@@ -107,7 +107,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             notifier.refreshStatus()
             NSApp.activate(ignoringOtherApps: true)
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            if let window = popover.contentViewController?.view.window {
+                window.makeKey()
+                // Otherwise AppKit focuses the first editable control (the
+                // Until time field) and it opens with its hour highlighted.
+                window.makeFirstResponder(nil)
+                DispatchQueue.main.async { window.makeFirstResponder(nil) }
+            }
         }
     }
 
