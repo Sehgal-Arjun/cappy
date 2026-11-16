@@ -52,8 +52,14 @@ final class Caffeinator: ObservableObject {
     }
 
     /// Starts (or restarts) keeping the Mac awake. `duration` nil = until stopped.
+    /// Longest session we schedule; anything longer (or not finite) is clamped.
+    static let maxDuration: TimeInterval = 7 * 24 * 60 * 60
+
     func start(for duration: TimeInterval?) {
-        endDate = duration.map { Date().addingTimeInterval(max(1, $0)) }
+        endDate = duration.map {
+            let seconds = $0.isFinite ? min(max(1, $0), Self.maxDuration) : Self.maxDuration
+            return Date().addingTimeInterval(seconds)
+        }
         isAwake = true
         relaunch()
         scheduleEndTimer()
@@ -90,6 +96,10 @@ final class Caffeinator: ObservableObject {
         if let remaining {
             guard remaining > 0 else { end(.timeUp); return }
             args += ["-t", String(Int(remaining.rounded(.up)))]
+        } else {
+            // "Until stopped" still needs a -t: without one, -u only lasts 5 seconds.
+            // -w ends it when we stop anyway.
+            args += ["-t", String(Int(Self.maxDuration))]
         }
         // Tie caffeinate's life to ours so a crash never leaves the Mac stuck awake.
         args += ["-w", String(ProcessInfo.processInfo.processIdentifier)]
@@ -133,7 +143,9 @@ final class Caffeinator: ObservableObject {
         guard let endDate else { return }
         // Wall-clock backstop: if the Mac slept through the end, this fires on wake.
         let timer = Timer(fire: endDate, interval: 0, repeats: false) { [weak self] _ in
-            Task { @MainActor in self?.end(.timeUp) }
+            // Runs on the main run loop; staying synchronous means a timer we
+            // just cancelled can't sneak in and end the next session.
+            MainActor.assumeIsolated { self?.end(.timeUp) }
         }
         RunLoop.main.add(timer, forMode: .common)
         endTimer = timer
