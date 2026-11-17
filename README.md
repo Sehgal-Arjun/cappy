@@ -3,7 +3,7 @@
 A tiny pixel cat in your menu bar that keeps your Mac awake.
 
 <p>
-  <img src="docs/screenshots/menubar-awake.gif" height="37" alt="Cappy awake in the menu bar with 1h41 left">
+  <img src="docs/screenshots/menubar-awake.gif" height="37" alt="Cappy awake in the menu bar with 59 minutes left">
   &nbsp;&nbsp;
   <img src="docs/screenshots/menubar-asleep.gif" height="37" alt="Cappy asleep in the menu bar">
 </p>
