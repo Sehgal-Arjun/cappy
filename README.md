@@ -2,45 +2,68 @@
 
 A tiny pixel cat in your menu bar that keeps your Mac awake.
 
-Cappy is a friendly front end for macOS's built-in `caffeinate`. Pick how long, pick what to keep awake, and Cappy sits up in the menu bar until time's up, then curls up for a nap.
+<p>
+  <img src="docs/screenshots/menubar-awake.gif" height="37" alt="Cappy awake in the menu bar with 1h41 left">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/menubar-asleep.gif" height="37" alt="Cappy asleep in the menu bar">
+</p>
 
-## Building
+Cappy is a friendly front end for `caffeinate`, the keep-awake tool built into macOS. Pick how long and what to keep awake, and Cappy sits up in the menu bar with a countdown until time's up, then curls up for a nap.
 
-Needs macOS 13+ and Swift 5.10+ (the Xcode command line tools are enough).
+<p align="center">
+  <img src="docs/screenshots/menu-awake.gif" width="300" alt="The Cappy menu while awake">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/menu-asleep.gif" width="300" alt="The Cappy menu while napping">
+</p>
 
-```bash
-./scripts/build-app.sh   # builds dist/Cappy.app
-./scripts/make-dmg.sh    # builds the app and wraps it in dist/Cappy-<version>.dmg
-```
+## What it does
 
-The DMG opens to a pixel-art window (night sky, Cappy and Applications on a shelf, a "Read me first" note with the steps below). The first run sets up a local `.venv` with [dmgbuild](https://github.com/dmgbuild/dmgbuild), which lays out the window without scripting Finder.
+- **Wake it up from the menu bar.** Click the cat, then Wake up or Let it sleep. While awake, the time left sits next to it.
+- **Any length you like.** 15 minutes, 30 minutes, 1, 2 or 4 hours, forever, or until a time and date (with Today, Tomorrow and Day after shortcuts).
+- **Choose what stays awake.** Each of `caffeinate`'s switches is a toggle in plain English: the screen, idle sleep, disks, the whole system on power, and "you're active". The exact command is shown underneath.
+- **A little cat that lives there.** Cappy sits, grooms and naps in pixel art. It honours Reduce Motion and stops animating while your screens are off.
+- **Tells you when time's up**, if you want it to.
+- **Opens at login**, if you want it to.
+- **Remembers your choices** between launches.
+- **Can't leave your Mac stuck awake.** If Cappy quits or crashes, `caffeinate` stops with it.
+- **Updates itself.** New versions show up in the menu and install in a click.
 
-![DMG window](scripts/dmg/background-preview.png)
+## Installing
 
-The window art comes from `scripts/make-dmg-background.py` (needs Pillow; `.venv/bin/pip install pillow`). Icon positions in `scripts/dmg/settings.py` must match it.
+Download the latest `Cappy-x.y.z.dmg` from [Releases](https://github.com/Sehgal-Arjun/cappy/releases/latest) and drag the cat into Applications. Needs an Apple Silicon Mac on macOS 13 or later.
 
-The app icon is generated from the cat sprite with `python3 scripts/make-icon.py` (needs Pillow). The resulting `Resources/AppIcon.icns` is committed, so you only need this to change the icon.
+<p align="center">
+  <img src="docs/screenshots/dmg.png" width="560" alt="The Cappy installer window">
+</p>
 
-## Releasing and auto-updates
+Cappy isn't notarized by Apple, so macOS blocks it the first time:
 
-Cappy updates itself with [Sparkle](https://sparkle-project.org). Installed copies check `https://github.com/Sehgal-Arjun/cappy/releases/latest/download/appcast.xml` once a day; when there's a newer build they offer it in the menu, then download, verify and install it.
-
-To ship a new version:
-
-1. Bump `CFBundleShortVersionString` **and** `CFBundleVersion` in `Resources/Info.plist` (Sparkle compares `CFBundleVersion`), merge to `main` and push.
-2. From a clean `main` that matches GitHub, run `./scripts/release.sh [notes.md]`. It builds the DMG, signs it with the Sparkle key, writes `appcast.xml` and creates the GitHub release with both attached. It refuses to run if the build number didn't go up or the tag already exists.
-
-**Only release through `release.sh`.** Installed copies read the feed from the *latest* release, so a release made by hand without `appcast.xml` quietly stops every update.
-
-Updates are signed with an EdDSA key kept in the login Keychain under the account `cappy` (created with Sparkle's `generate_keys --account cappy`; `./scripts/sparkle-tools.sh` fetches the tools). The public half is `SUPublicEDKey` in `Info.plist`. **Back up that key** (`generate_keys --account cappy -x cappy-key.txt`, then store it somewhere safe): without it, no future update can be installed by existing copies.
-
-## Opening it the first time
-
-Cappy isn't notarized by Apple, so macOS blocks the first launch:
-
-1. Drag Cappy into Applications and open it. macOS says it can't be opened. Click Done.
+1. Open Cappy from Applications. macOS says it can't be opened. Click Done.
 2. Open System Settings › Privacy & Security, scroll down, and click **Open Anyway** next to Cappy.
 3. Confirm. From then on it opens normally.
+
+The DMG includes a "Read me first" note with the same steps.
+
+## What the switches mean
+
+| In Cappy | Flag | Keeps… |
+| --- | --- | --- |
+| Screen on | `-d` | the display from sleeping |
+| Mac from idling | `-i` | the Mac from idle sleep |
+| Disks spinning | `-m` | disks from idle sleep |
+| System on, when plugged in | `-s` | the whole system awake, on AC power only |
+| You marked as active | `-u` | you counted as active, so the screen doesn't dim |
+
+At least one has to be on.
+
+## Built with
+
+- **Swift and SwiftUI**, as a Swift package (no Xcode project). AppKit runs the menu bar item and its popover.
+- **`caffeinate`**, run as a child process. Cappy doesn't touch power settings itself.
+- **[Sparkle](https://sparkle-project.org)** for signed auto-updates, served from GitHub Releases.
+- **[dmgbuild](https://github.com/dmgbuild/dmgbuild)** and **Pillow** for the installer window and the app icon.
+
+Want to build it yourself? See [docs/DEVELOPING.md](docs/DEVELOPING.md).
 
 ## Credits
 
