@@ -19,8 +19,8 @@ Cappy is a friendly front end for `caffeinate`, the keep-awake tool built into m
 ## What it does
 
 - **Wake it up from the menu bar.** Click the cat, then Wake up or Let it sleep. While awake, the time left sits next to it.
-- **Any length you like.** 15 minutes, 30 minutes, 1, 2 or 4 hours, forever, or until a time and date (with Today, Tomorrow and Day after shortcuts).
-- **Choose what stays awake.** Each of `caffeinate`'s switches is a toggle in plain English: the screen, idle sleep, disks, the whole system on power, and "you're active". The exact command is shown underneath.
+- **Any length you like.** 15 minutes, 30 minutes, 1, 2 or 4 hours, until you stop it, or until a time and date (with Today, Tomorrow and Day after shortcuts). Sessions last at most a week.
+- **Choose what stays awake.** Each of `caffeinate`'s switches is a toggle in plain English: the screen, idle sleep, disks, the whole system while plugged in, and "you're active". The matching `caffeinate` command is shown underneath.
 - **A little cat that lives there.** Cappy sits, grooms and naps in pixel art. It honours Reduce Motion and stops animating while your screens are off.
 - **Tells you when time's up**, if you want it to.
 - **Opens at login**, if you want it to.
@@ -40,9 +40,9 @@ Cappy isn't notarized by Apple, so macOS blocks it the first time:
 
 1. Open Cappy from Applications. macOS says it can't be opened. Click Done.
 2. Open System Settings › Privacy & Security, scroll down, and click **Open Anyway** next to Cappy.
-3. Confirm. From then on it opens normally.
+3. Click **Open Anyway** again and enter your Mac password or use Touch ID. If the button has gone, open Cappy again and repeat. From then on it opens normally.
 
-The DMG includes a "Read me first" note with the same steps.
+The DMG includes a "Read me first" note with these steps in more detail.
 
 ## What the switches mean
 
